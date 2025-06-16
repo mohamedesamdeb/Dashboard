@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>لوحة التحكم الاحترافية</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      body {
+    font-family: 'Tajawal', sans-serif;
+  }
+      .sidebar:hover {
+        width: 220px;
+      }
+      .sidebar:hover .link-text {
+        display: inline;
+      }
+      /** Tailwind Custom Animation -->**/
+      @keyframes spin-slow {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .animate-spin-slow {
+        animation: spin-slow 2s linear infinite;
+      }
+      .animate-fade-in {
+        animation: fade-in 0.5s ease-out forwards;
+      }
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 font-sans">
+    <div class="flex h-screen">
+      <!-- الشريط الجانبي -->
+      <aside
+        class="sidebar bg-gradient-to-b from-gray-900 to-gray-800 text-white w-16 hover:w-56 transition-all duration-300 overflow-hidden shadow-lg"
+      >
+        <div class="flex flex-col h-full p-2 space-y-6 pt-6">
+          <div class="flex items-center space-x-2 px-4 mb-4">
+            <i data-lucide="layout-dashboard" class="w-6 h-6 text-blue-400"></i>
+            <span class="link-text hidden font-semibold text-lg"
+              >لوحة التحكم</span
+            >
+          </div>
+
+          <button
+  onclick="loadContent('home')"
+  class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-gray-800 transition text-right"
+>
+  <i data-lucide="home" class="w-5 h-5 text-yellow-400"></i>
+  <span class="link-text hidden">الصفحة الرئيسية</span>
+</button>
+
+
+
+          <button
+            onclick="loadContent('attendance')"
+            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-blue-800 transition text-right"
+          >
+            <i data-lucide="clock" class="w-5 h-5 text-blue-300"></i>
+            <span class="link-text hidden">الحضور والانصراف</span>
+          </button>
+          <button
+            onclick="loadContent('housing')"
+            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-green-800 transition text-right"
+          >
+            <i data-lucide="home" class="w-5 h-5 text-green-300"></i>
+            <span class="link-text hidden">التسكين</span>
+          </button>
+          <button
+            onclick="loadContent('repayment')"
+            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-purple-800 transition text-right"
+          >
+            <i data-lucide="camera" class="w-5 h-5 text-purple-300"></i>
+            <span class="link-text hidden">Repayment</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- مساحة المحتوى -->
+      <main
+        class="flex-1 p-8 bg-white rounded-l-3xl shadow-inner overflow-y-auto"
+      >
+        <div id="mainContent">
+          <h1 class="text-3xl font-bold text-gray-800 mb-4">👋 أهلاً بيك</h1>
+          <p class="text-gray-600">
+            استخدم القائمة على اليمين لاستعراض البرامج المختلفة.
+          </p>
+        </div>
+      </main>
+    </div>
+
+    <!-- شاشة تحميل -->
+    <!-- شاشة تحميل زجاجية احترافية -->
+    <div
+      id="loaderOverlay"
+      class="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-md flex justify-center items-center z-50 hidden"
+    >
+      <div
+        class="bg-white dark:bg-gray-900 bg-opacity-70 dark:bg-opacity-80 px-8 py-6 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col items-center space-y-4 animate-fade-in"
+      >
+        <!-- Animation -->
+        <div class="relative w-16 h-16">
+          <div
+            class="absolute inset-0 border-4 border-blue-500 border-dashed rounded-full animate-spin-slow"
+          ></div>
+          <div
+            class="absolute inset-2 bg-blue-500 rounded-full shadow-inner animate-ping"
+          ></div>
+        </div>
+
+        <!-- Text -->
+        <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+          جاري تحميل البيانات
+        </p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          من فضلك انتظر
+          <span id="countdown" class="text-blue-600 font-bold">0</span> ثانية...
+        </p>
+      </div>
+    </div>
+     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- سكريبت الصفحة -->
+    <script>
+      lucide.createIcons();
+
+      let lastDataTime = null;
+
+      function loadContent(section) {
+  const main = document.getElementById("mainContent");
+
+  if (section === "attendance") {
+    main.innerHTML = `
+      <h2 class="text-2xl font-bold text-blue-800 mb-4">📋 جدول الحضور والانصراف</h2>
+      <div class="flex flex-wrap gap-4 items-center bg-blue-50 p-4 rounded shadow mb-4">
+        <input type="text" id="searchName" placeholder="ابحث باسم الفني..." class="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3" oninput="filterTable()" />
+        <div class="flex items-center gap-2">
+          <label for="fromDate" class="text-sm text-gray-700">من:</label>
+          <input type="date" id="fromDate" class="px-2 py-1 border rounded" onchange="filterTable()" />
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="toDate" class="text-sm text-gray-700">إلى:</label>
+          <input type="date" id="toDate" class="px-2 py-1 border rounded" onchange="filterTable()" />
+        </div>
+        <button onclick="fetchNewAttendance()" class="ml-auto bg-blue-700 text-white px-4 py-2 rounded shadow hover:bg-blue-800 flex items-center gap-2">
+          <i data-lucide="refresh-ccw" class="w-4 h-4"></i>
+          <span>تحديث البيانات</span>
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-300 rounded shadow">
+          <thead class="bg-blue-200 text-blue-900">
+            <tr>
+              <th class="px-4 py-2 border">الوقت</th>
+              <th class="px-4 py-2 border">الاسم</th>
+              <th class="px-4 py-2 border">المكتب</th>
+              <th class="px-4 py-2 border">الإجراء</th>
+              <th class="px-4 py-2 border">Latitude</th>
+              <th class="px-4 py-2 border">Longitude</th>
+              <th class="px-4 py-2 border">رابط الصورة</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceTableBody"></tbody>
+        </table>
+      </div>
+    `;
+    lucide.createIcons();
+    fetchNewAttendance();
+
+  } else if (section === "housing") {
+    main.innerHTML = `
+      <h2 class="text-2xl font-bold text-green-800 mb-2">🏠 صفحة التسكين</h2>
+      <p class="text-gray-700">هنا تسجل أو تتابع بيانات التسكين.</p>
+    `;
+
+  } else if (section === "repayment") {
+    main.innerHTML = `
+      <h2 class="text-2xl font-bold text-purple-800 mb-2">📸 صفحة Repayment</h2>
+      <p class="text-gray-700">التقاط الصور ورفع البيانات هنا.</p>
+    `;
+
+  } else if (section === "home") {
+    main.innerHTML = `
+      <h2 class="text-2xl font-bold text-yellow-600 mb-4">📊 الصفحة الرئيسية</h2>
+      <p class="text-gray-700 mb-4">تحليل الحضور للموظفين</p>
+      <div class="bg-white p-6 rounded shadow-md w-full max-w-lg mx-auto">
+        <canvas id="attendanceChart" width="400" height="400"></canvas>
+      </div>
+    `;
+
+    setTimeout(() => {
+      const ctx = document.getElementById("attendanceChart").getContext("2d");
+      new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: ["منتظم", "كثير الغياب"],
+          datasets: [{
+            label: "نسبة الموظفين",
+            data: [75, 25], // ✏️ عدل القيم حسب بياناتك
+            backgroundColor: ["#10B981", "#EF4444"],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                font: {
+                  size: 14,
+                  family: 'Tajawal'
+                }
+              }
+            },
+            title: {
+              display: true,
+              text: 'تحليل الحضور',
+              font: {
+                size: 18
+              }
+            }
+          }
+        }
+      });
+    }, 100);
+  }
+}
+
+
+      function fetchNewAttendance() {
+        const overlay = document.getElementById("loaderOverlay");
+        const countdownText = document.getElementById("countdown");
+        overlay.classList.remove("hidden");
+
+        let seconds = 0;
+        countdownText.textContent = seconds;
+        const timer = setInterval(() => {
+          seconds++;
+          countdownText.textContent = seconds;
+        }, 1000);
+
+        fetch(
+          "https://script.google.com/macros/s/AKfycby5QdbFnpkhnBFkl5el6B2rflE1HcCHTMzV2hERMhbll4veiAESm4ElsQf7Bey3sDzUAQ/exec"
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            const tableBody = document.getElementById("attendanceTableBody");
+            tableBody.innerHTML = "";
+
+            data.forEach((row) => {
+              const tr = document.createElement("tr");
+              tr.className = "text-center hover:bg-gray-100 transition";
+              tr.innerHTML = `
+          <td class="px-4 py-2 border">${row["الوقت"]}</td>
+          <td class="px-4 py-2 border">${row["الاسم"]}</td>
+          <td class="px-4 py-2 border">${row["المكتب"]}</td>
+          <td class="px-4 py-2 border font-bold ${
+            row["الإجراء"] === "دخول" ? "text-green-600" : "text-red-600"
+          }">${row["الإجراء"]}</td>
+          <td class="px-4 py-2 border">${row["خط العرض (Latitude)"]}</td>
+          <td class="px-4 py-2 border">${row["خط الطول (Longitude)"]}</td>
+          <td class="px-4 py-2 border"><a href="${
+            row["الصورة (رابط)"]
+          }" target="_blank" class="text-blue-500 underline">عرض</a></td>
+        `;
+              tableBody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("❌ حدث خطأ أثناء تحميل البيانات.");
+          })
+          .finally(() => {
+            clearInterval(timer);
+            overlay.classList.add("hidden");
+          });
+      }
+
+      function filterTable() {
+        const name = document.getElementById("searchName").value.toLowerCase();
+        const from = new Date(document.getElementById("fromDate").value);
+        const to = new Date(document.getElementById("toDate").value);
+        const rows = document.querySelectorAll("#attendanceTableBody tr");
+
+        rows.forEach((row) => {
+          const rowName = row.children[1].textContent.toLowerCase();
+          const rowDateText = row.children[0].textContent.split(" ")[0];
+          const rowDate = new Date(rowDateText);
+
+          const nameMatch = rowName.includes(name);
+          const dateMatch =
+            (!isNaN(from) ? rowDate >= from : true) &&
+            (!isNaN(to) ? rowDate <= to : true);
+
+          row.style.display = nameMatch && dateMatch ? "" : "none";
+        });
+      }
+    </script>
+  </body>
+</html>
