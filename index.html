@@ -18,7 +18,6 @@
       }
       .sidebar:hover {
         width: 220px;
-        overflow-y: auto;
       }
       .sidebar:hover .link-text {
         display: inline;
@@ -29,11 +28,6 @@
         border: 1px solid #ccc;
         border-radius: 8px;
         background-color: #fff;
-      }
-
-      .sidebar {
-        max-height: 100vh;
-        overflow-y: auto;
       }
 
       /** Tailwind Custom Animation -->**/
@@ -67,7 +61,7 @@
     <div class="flex h-screen">
       <!-- الشريط الجانبي -->
       <aside
-        class="sidebar bg-gradient-to-b from-gray-900 to-gray-800 text-white w-16 hover:w-56 transition-all duration-300 overflow-hidden shadow-lg overflow-y-auto"
+        class="sidebar bg-gradient-to-b from-gray-900 to-gray-800 text-white w-16 hover:w-56 transition-all duration-300 overflow-hidden shadow-lg"
       >
         <div class="flex flex-col h-full p-2 space-y-6 pt-6">
           <div class="flex items-center space-x-2 px-4 mb-4">
@@ -115,30 +109,6 @@
           >
             <i data-lucide="user-plus" class="w-7 h-7 text-orange-400"></i>
             <span class="link-text hidden">إضافة موظف</span>
-          </button>
-
-          <button
-            onclick="loadContent('addEmployee')"
-            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-orange-800 transition text-right"
-          >
-            <i data-lucide="user" class="w-7 h-7 text-orange-400"></i>
-            <span class="link-text hidden">بيانات الموظفين</span>
-          </button>
-
-          <button
-            onclick="loadContent('addEmployee')"
-            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-orange-800 transition text-right"
-          >
-            <i data-lucide="Settings" class="w-7 h-7 text-white-400"></i>
-            <span class="link-text hidden">الأعدادات</span>
-          </button>
-
-          <button
-            onclick="loadContent('addEmployee')"
-            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-red-800 transition text-right"
-          >
-            <i data-lucide="Log-out" class="w-7 h-7 text-red-400"></i>
-            <span class="link-text hidden">تسجيل خروج</span>
           </button>
         </div>
       </aside>
@@ -324,6 +294,21 @@
     <h2 class="text-2xl font-bold text-orange-800 mb-4">📌 إضافة موظف</h2>
     <div class="space-y-6">
 
+      <div class="flex flex-wrap items-start gap-6">
+        <!-- رفع الصورة -->
+        <div class="w-full sm:w-1/4 flex flex-col items-center">
+          <label class="mb-2 font-medium text-gray-700">📷 صورة الموظف</label>
+          <!-- مربع تحميل الصورة -->
+<label for="photo" class="relative w-48 h-48 bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 rounded-xl overflow-hidden">
+  <span id="plusIcon" class="text-5xl text-gray-500 absolute">+</span>
+  <img id="preview" src="" class="w-full h-full object-cover hidden" style="border-radius: 12px;" />
+</label>
+<input type="file" id="photo" accept="image/*" class="hidden" onchange="previewImage()" />
+
+<input type="file" id="photo" accept="image/*" class="hidden" onchange="previewImage()" />
+
+        </div>
+
         <!-- باقي النموذج -->
         <div class="w-full sm:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -355,17 +340,7 @@
             <input type="date" id="hireDate" class="input-style" />
           </div>
 
-          <div>
-  <label for="status" class="block text-sm text-gray-600 mb-1">💍 الحالة الاجتماعية</label>
-  <select id="status" class="input-style">
-    <option value="">اختر الحالة</option>
-    <option value="أعزب">أعزب</option>
-    <option value="متزوج">متزوج</option>
-    <option value="مطلق">مطلق</option>
-    <option value="أرمل">أرمل</option>
-  </select>
-</div>
-
+          <input type="text" id="status" placeholder="الحالة الاجتماعية" class="input-style" />
           <input type="number" id="salary" placeholder="المرتب بالجنيه" class="input-style" />
 
         </div>
@@ -606,6 +581,30 @@
           };
           reader.readAsDataURL(input.files[0]);
         }
+      }
+
+      // الكود المؤقت لإرسال البيانات
+      function submitEmployee() {
+        const name = document.getElementById("name").value;
+        const nationalId = document.getElementById("nationalId").value;
+        const address = document.getElementById("address").value;
+        const mobile = document.getElementById("mobile").value;
+        const jobTitle = document.getElementById("jobTitle").value;
+        const project = document.getElementById("project").value;
+        const birthDate = document.getElementById("birthDate").value;
+        const hireDate = document.getElementById("hireDate").value;
+        const status = document.getElementById("status").value;
+        const salary = document.getElementById("salary").value;
+        const photo = document.getElementById("photo").files[0];
+
+        if (!name || !photo) {
+          alert("⚠️ من فضلك أدخل اسم الموظف وارفع صورة.");
+          return;
+        }
+
+        // هنا هيتم استخدام Google Apps Script لإرسال البيانات
+        // هنضيفها لاحقًا
+        alert("✅ تم تجهيز البيانات للإرسال (جوجل شيت + درايف)");
       }
     </script>
   </body>
