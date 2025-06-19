@@ -292,67 +292,35 @@
         } else if (section === "addEmployee") {
           main.innerHTML = `
     <h2 class="text-2xl font-bold text-orange-800 mb-4">📌 إضافة موظف</h2>
-    <div class="space-y-6">
+    <form method="POST" action="https://script.google.com/macros/s/AKfycbz8C-Bd0JZ0y9QRULZn37kRdYb9Uv29CEgIqH3dyiIxAGI2d_C16chJYAZJS3k-9_y-/exec" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" name="name" placeholder="اسم الموظف" class="input-style" required />
+        <input type="text" name="nationalId" placeholder="الرقم القومي" class="input-style" />
 
-      <div class="flex flex-wrap items-start gap-6">
-        <!-- رفع الصورة -->
-        <div class="w-full sm:w-1/4 flex flex-col items-center">
-          <label class="mb-2 font-medium text-gray-700">📷 صورة الموظف</label>
-          <!-- مربع تحميل الصورة -->
-<label for="photo" class="relative w-48 h-48 bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 rounded-xl overflow-hidden">
-  <span id="plusIcon" class="text-5xl text-gray-500 absolute">+</span>
-  <img id="preview" src="" class="w-full h-full object-cover hidden" style="border-radius: 12px;" />
-</label>
-<input type="file" id="photo" accept="image/*" class="hidden" onchange="previewImage()" />
+        <input type="text" name="address" placeholder="العنوان" class="input-style" />
+        <input type="text" name="mobile" placeholder="رقم الموبايل" class="input-style" />
 
-<input type="file" id="photo" accept="image/*" class="hidden" onchange="previewImage()" />
+        <input type="text" name="jobTitle" placeholder="الوظيفة" class="input-style" />
+        <input type="text" name="project" placeholder="المشروع" class="input-style" />
 
-        </div>
+        <select name="office" class="input-style">
+          <option value="">اختر المكتب</option>
+          <option value="شبرا">شبرا</option>
+          <option value="جسر السويس">جسر السويس</option>
+          <option value="المهندسين">المهندسين</option>
+        </select>
 
-        <!-- باقي النموذج -->
-        <div class="w-full sm:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-4">
-
-          <input type="text" id="name" placeholder="اسم الموظف" class="input-style" />
-          <input type="text" id="nationalId" placeholder="الرقم القومي" class="input-style" />
-
-          <input type="text" id="address" placeholder="العنوان" class="input-style" />
-          <input type="text" id="mobile" placeholder="رقم الموبايل" class="input-style" />
-
-          <input type="text" id="jobTitle" placeholder="الوظيفة" class="input-style" />
-          <input type="text" id="project" placeholder="المشروع" class="input-style" />
-          <div>
-  <label for="office" class="block text-sm text-gray-600 mb-1">🏢 المكتب</label>
-  <select id="office" class="input-style">
-    <option value="">اختر المكتب</option>
-    <option value="شبرا">شبرا</option>
-    <option value="جسر السويس">جسر السويس</option>
-    <option value="المهندسين">المهندسين</option>
-  </select>
-</div>
-
-
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">📅 تاريخ الميلاد</label>
-            <input type="date" id="birthDate" class="input-style" />
-          </div>
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">🗓️ تاريخ التعيين</label>
-            <input type="date" id="hireDate" class="input-style" />
-          </div>
-
-          <input type="text" id="status" placeholder="الحالة الاجتماعية" class="input-style" />
-          <input type="number" id="salary" placeholder="المرتب بالجنيه" class="input-style" />
-
-        </div>
+        <input type="date" name="birthDate" class="input-style" />
+        <input type="date" name="hireDate" class="input-style" />
+        <input type="text" name="status" placeholder="الحالة الاجتماعية" class="input-style" />
+        <input type="number" name="salary" placeholder="المرتب بالجنيه" class="input-style" />
       </div>
 
-      <button onclick="submitEmployee()" class="bg-orange-600 text-white px-6 py-3 rounded shadow hover:bg-orange-700">
+      <button type="submit" class="bg-orange-600 text-white px-6 py-3 rounded shadow hover:bg-orange-700">
         ➕ إضافة الموظف
       </button>
-    </div>
+    </form>
   `;
-
-          lucide.createIcons();
         }
       }
 
@@ -581,30 +549,6 @@
           };
           reader.readAsDataURL(input.files[0]);
         }
-      }
-
-      // الكود المؤقت لإرسال البيانات
-      function submitEmployee() {
-        const name = document.getElementById("name").value;
-        const nationalId = document.getElementById("nationalId").value;
-        const address = document.getElementById("address").value;
-        const mobile = document.getElementById("mobile").value;
-        const jobTitle = document.getElementById("jobTitle").value;
-        const project = document.getElementById("project").value;
-        const birthDate = document.getElementById("birthDate").value;
-        const hireDate = document.getElementById("hireDate").value;
-        const status = document.getElementById("status").value;
-        const salary = document.getElementById("salary").value;
-        const photo = document.getElementById("photo").files[0];
-
-        if (!name || !photo) {
-          alert("⚠️ من فضلك أدخل اسم الموظف وارفع صورة.");
-          return;
-        }
-
-        // هنا هيتم استخدام Google Apps Script لإرسال البيانات
-        // هنضيفها لاحقًا
-        alert("✅ تم تجهيز البيانات للإرسال (جوجل شيت + درايف)");
       }
     </script>
   </body>
