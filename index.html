@@ -12,6 +12,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
       body {
         font-family: "Tajawal", sans-serif;
@@ -112,10 +114,17 @@
           </button>
           <button
             onclick="loadContent('addEmployee')"
-            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-orange-800 transition text-right"
+            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-orange-900 transition text-right"
           >
             <i data-lucide="user-plus" class="w-7 h-7 text-orange-400"></i>
             <span class="link-text hidden">إضافة موظف</span>
+          </button>
+          <button
+            onclick="loadContent('viewEmployees')"
+            class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-teal-700 transition text-right"
+          >
+            <i data-lucide="users" class="w-7 h-7 text-teal-400"></i>
+            <span class="link-text hidden">عرض الموظفين</span>
           </button>
         </div>
       </aside>
@@ -158,6 +167,95 @@
         </p>
       </div>
     </div>
+    <div
+      id="statsPopup"
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50 hidden"
+    >
+      <div
+        class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md relative animate-fade-in"
+      >
+        <h2 class="text-xl font-bold text-center text-indigo-800 mb-4">
+          📊 إحصائيات الموظفين
+        </h2>
+
+        <div id="statsContent" class="space-y-4 text-center text-gray-800">
+          <p>
+            <strong>إجمالي الموظفين:</strong> <span id="totalCount">--</span>
+          </p>
+          <p>
+            <strong>عدد المتزوجين:</strong> <span id="marriedCount">--</span>
+          </p>
+          <p>
+            <strong>متوسط المرتب:</strong> <span id="avgSalary">--</span> جنيه
+          </p>
+
+          <canvas
+            id="statsChart"
+            class="mx-auto"
+            width="200"
+            height="200"
+          ></canvas>
+        </div>
+
+        <div class="flex justify-between mt-6">
+          <button
+            onclick="downloadStatsPDF()"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            📥 تحميل PDF
+          </button>
+          <button
+            onclick="hideStatsPopup()"
+            class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            ❌ إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="housingStatsPopup"
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50 hidden"
+    >
+      <div
+        class="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl relative animate-fade-in"
+      >
+        <h2 class="text-xl font-bold text-center text-indigo-800 mb-4">
+          📊 إحصائيات التسكين
+        </h2>
+
+        <div
+          id="housingStatsContent"
+          class="space-y-6 text-center text-gray-800"
+        >
+          <canvas id="officeChart" height="70"></canvas>
+          <canvas id="hondaChart" height="70"></canvas>
+          <div class="text-sm text-gray-600">
+            <p>
+              <strong>عدد ساعات تشغيل الهوندا:</strong>
+              <span id="totalHondaHours">--</span> ساعة
+            </p>
+          </div>
+        </div>
+
+        <div class="flex justify-between mt-6">
+          <button
+            onclick="downloadHousingStatsPDF()"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            📥 تحميل PDF
+          </button>
+          <button
+            onclick="hideHousingStats()"
+            class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            ❌ إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- سكريبت الصفحة -->
     <script>
       lucide.createIcons();
@@ -211,6 +309,12 @@
          <i data-lucide="refresh-ccw" class="w-4 h-4"></i>
           <span>تحديث البيانات</span>
         </button>
+        <button onclick="showHousingStats()"
+        class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 flex items-center gap-2">
+  <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+  <span>عرض الإحصائيات</span>
+</button>
+
       </div>
     <div class="overflow-auto rounded shadow border border-gray-300">
       <table class="min-w-full bg-white text-center border border-gray-200">
@@ -230,6 +334,7 @@
       </table>
     </div>
   `;
+          lucide.createIcons();
           fetchHousingData();
         } else if (section === "repayment") {
           main.innerHTML = `
@@ -238,56 +343,55 @@
     `;
         } else if (section === "home") {
           main.innerHTML = `
-      <h2 class="text-2xl font-bold text-yellow-600 mb-4">📊 الصفحة الرئيسية</h2>
-      <p class="text-gray-700 mb-4">تحليل الحضور للموظفين</p>
-      <div class="bg-white p-6 rounded shadow-md w-full max-w-lg mx-auto">
-        <canvas id="attendanceChart" width="400" height="400"></canvas>
+    <section class="space-y-8">
+      <!-- كروت الإحصائيات -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-center mt-6">
+        <div class="bg-white p-4 rounded-xl shadow border text-teal-700">
+          <div class="text-3xl font-bold" id="employeeCount">--</div>
+          <div class="mt-2">👥 عدد الموظفين</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border text-orange-700 text-right">
+  <div class="text-lg font-bold mb-2">🏢 توزيع الموظفين حسب المكاتب</div>
+  <ul id="officeList" class="space-y-1 text-sm">
+    <!-- هنملأه ديناميكيًا -->
+  </ul>
+</div>
+
+        <div class="bg-white p-4 rounded-xl shadow border text-indigo-700">
+          <div class="text-3xl font-bold" id="housingCount">--</div>
+          <div class="mt-2">🏠 حالات التسكين النشطة</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border text-gray-700">
+          <div class="text-xl font-semibold" id="lastUpdate">--</div>
+          <div class="mt-2">🕒 آخر تحديث</div>
+        </div>
       </div>
-    `;
-          setTimeout(() => {
-            const ctx = document
-              .getElementById("attendanceChart")
-              .getContext("2d");
-            new Chart(ctx, {
-              type: "pie",
-              data: {
-                labels: ["منتظم", "كثير الغياب"],
-                datasets: [
-                  {
-                    label: "نسبة الموظفين",
-                    data: [75, 25], // ✏️ عدل القيم حسب بياناتك
-                    backgroundColor: ["#10B981", "#EF4444"],
-                    borderWidth: 1,
-                  },
-                ],
-              },
-              options: {
-                responsive: true,
-                plugins: {
-                  legend: {
-                    position: "bottom",
-                    labels: {
-                      font: {
-                        size: 14,
-                        family: "Tajawal",
-                      },
-                    },
-                  },
-                  title: {
-                    display: true,
-                    text: "تحليل الحضور",
-                    font: {
-                      size: 18,
-                    },
-                  },
-                },
-              },
-            });
-          }, 100);
+
+      <!-- المخططات -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <div class="bg-white p-4 rounded-xl shadow border">
+          <h3 class="font-bold text-teal-700 mb-2">📊 استخدام الهوندا</h3>
+          <canvas id="homeHondaChart" height="200"></canvas>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border">
+          <h3 class="font-bold text-indigo-700 mb-2">🏢 توزيع التسكين حسب المكاتب</h3>
+          <canvas id="homeOfficeChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- توزيع الموظفين -->
+      <div class="bg-white p-4 rounded-xl shadow border mt-6">
+        <h3 class="font-bold text-gray-700 mb-2">👨‍💼 توزيع الموظفين حسب الوظيفة</h3>
+        <canvas id="homeJobChart" height="200"></canvas>
+      </div>
+    
+  `;
+
+          loadHomeStats();
         } else if (section === "addEmployee") {
           main.innerHTML = `
     <h2 class="text-2xl font-bold text-orange-800 mb-4">📌 إضافة موظف</h2>
-    <form method="POST" action="https://script.google.com/macros/s/AKfycbz8C-Bd0JZ0y9QRULZn37kRdYb9Uv29CEgIqH3dyiIxAGI2d_C16chJYAZJS3k-9_y-/exec" class="space-y-6">
+    <form method="POST" action="https://script.google.com/macros/s/AKfycbyIkawBofCnNpqwyk8t1VP3ryipZ-8N3rUeyHfp7khBIHSI8O7b6lVZF9kLtDKY8dY5/exec" class="space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <input type="text" name="name" placeholder="اسم الموظف" class="input-style" required />
         <input type="text" name="nationalId" placeholder="الرقم القومي" class="input-style" />
@@ -301,9 +405,28 @@
           <option value="جسر السويس">جسر السويس</option>
           <option value="المهندسين">المهندسين</option>
         </select>
-        <input type="date" name="birthDate" class="input-style" />
-        <input type="date" name="hireDate" class="input-style" />
-        <input type="text" name="status" placeholder="الحالة الاجتماعية" class="input-style" />
+
+        <div class="flex flex-col">
+  <select name="status" class="input-style">
+    <option value="">اختر الحالة</option>
+    <option value="أعزب">أعزب</option>
+    <option value="متزوج">متزوج</option>
+    <option value="مطلق">مطلق</option>
+    <option value="أرمل">أرمل</option>
+  </select>
+</div>
+        <div class="flex flex-col">
+  <label class="text-sm text-gray-700 mb-1">📅 تاريخ الميلاد</label>
+  <input type="date" name="birthDate" class="input-style" />
+</div>
+
+<div class="flex flex-col">
+  <label class="text-sm text-gray-700 mb-1">🗓️ تاريخ التعيين</label>
+  <input type="date" name="hireDate" class="input-style" />
+</div>
+
+        
+
         <input type="number" name="salary" placeholder="المرتب بالجنيه" class="input-style" />
       </div>
       <button type="submit" class="bg-orange-600 text-white px-6 py-3 rounded shadow hover:bg-orange-700">
@@ -311,6 +434,56 @@
       </button>
     </form>
   `;
+        } else if (section === "viewEmployees") {
+          main.innerHTML = `
+    <h2 class="text-2xl font-bold text-teal-800 mb-4">👨‍💼 قائمة الموظفين</h2>
+
+<!-- أدوات البحث -->
+<div class="flex flex-wrap gap-4 items-center bg-teal-50 p-4 rounded shadow mb-4">
+  <input type="text" id="searchEmployee" placeholder="ابحث باسم الموظف..." 
+         class="px-4 py-2 border border-gray-300 rounded w-full md:w-1/3" 
+         oninput="filterEmployees()" />
+
+  <button onclick="fetchEmployeeData()" 
+          class="bg-teal-600 text-white px-4 py-2 rounded shadow hover:bg-teal-700 flex items-center gap-2">
+    <i data-lucide="refresh-ccw" class="w-4 h-4"></i>
+    <span>تحديث البيانات</span>
+  </button>
+
+  <button onclick="exportEmployeesToExcel()" 
+          class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 flex items-center gap-2">
+    <i data-lucide="download" class="w-4 h-4"></i>
+    <span>تحميل Excel</span>
+  </button>
+  <button onclick="showStatsPopup()"
+        class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 flex items-center gap-2">
+  <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+  <span>عرض الإحصائيات</span>
+</button>
+
+</div>
+
+      <table class="min-w-full bg-white text-center border border-gray-200">
+        <thead class="bg-teal-100 text-teal-800 font-bold">
+          <tr>
+            <th class="px-4 py-2 border">HireDate</th>
+            <th class="px-4 py-2 border">Name</th>
+            <th class="px-4 py-2 border">NationalId</th>
+            <th class="px-4 py-2 border">Address</th>
+            <th class="px-4 py-2 border">Mobile</th>
+            <th class="px-4 py-2 border">JobTitle</th>
+            <th class="px-4 py-2 border">Project</th>
+            <th class="px-4 py-2 border">Office</th>
+            <th class="px-4 py-2 border">Status</th>
+            <th class="px-4 py-2 border">Salary</th>
+          </tr>
+        </thead>
+        <tbody id="employeeTableBody"></tbody>
+      </table>
+    </div>
+  `;
+          lucide.createIcons();
+          fetchEmployeeData();
         }
       }
       function filterBySiteID() {
@@ -535,6 +708,382 @@
           };
           reader.readAsDataURL(input.files[0]);
         }
+      }
+
+      function fetchEmployeeData() {
+        const overlay = document.getElementById("loaderOverlay");
+        const countdownText = document.getElementById("countdown");
+
+        // ✅ عرض شاشة التحميل
+        overlay.classList.remove("hidden");
+
+        let seconds = 0;
+        countdownText.textContent = seconds;
+        const timer = setInterval(() => {
+          seconds++;
+          countdownText.textContent = seconds;
+        }, 1000);
+
+        fetch(
+          "https://script.google.com/macros/s/AKfycbwW05ThHhLzFFqq3mZ-hvayRoHlGA7ESpd0ysT1lVPY3nukqr6S5f1WdyHWobGF3c5p/exec"
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            const tableBody = document.getElementById("employeeTableBody");
+            tableBody.innerHTML = "";
+            data.forEach((emp) => {
+              const tr = document.createElement("tr");
+              tr.className = "hover:bg-gray-100 transition";
+              tr.innerHTML = `
+          <td class="px-4 py-2 border">${formatDateOnly(emp.hireDate)}</td>
+          <td class="px-4 py-2 border">${emp.name || ""}</td>
+          <td class="px-4 py-2 border">${emp.nationalId || ""}</td>
+          <td class="px-4 py-2 border">${emp.address || ""}</td>
+          <td class="px-4 py-2 border">${emp.mobile || ""}</td>
+          <td class="px-4 py-2 border">${emp.jobTitle || ""}</td>
+          <td class="px-4 py-2 border">${emp.project || ""}</td>
+          <td class="px-4 py-2 border">${emp.office || ""}</td>
+          <td class="px-4 py-2 border">${emp.status || ""}</td>
+          <td class="px-4 py-2 border">${emp.salary || ""}</td>
+        `;
+              tableBody.appendChild(tr);
+            });
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("❌ حدث خطأ أثناء تحميل بيانات الموظفين.");
+          })
+          .finally(() => {
+            clearInterval(timer);
+            overlay.classList.add("hidden"); // ✅ إخفاء شاشة التحميل
+          });
+      }
+
+      function filterEmployees() {
+        const input = document
+          .getElementById("searchEmployee")
+          .value.trim()
+          .toLowerCase();
+        const rows = document.querySelectorAll("#employeeTableBody tr");
+
+        rows.forEach((row) => {
+          const nameCell = row.querySelector("td:first-child");
+          const nameText = nameCell?.textContent.toLowerCase() || "";
+          row.style.display = nameText.includes(input) ? "" : "none";
+        });
+      }
+
+      function exportEmployeesToExcel() {
+        const table = document.querySelector("table");
+        const rows = Array.from(table.querySelectorAll("tr"));
+
+        let csvContent = "\uFEFF"; // BOM for UTF-8
+        rows.forEach((row) => {
+          const cells = Array.from(row.querySelectorAll("th, td")).map(
+            (cell) => `="${cell.innerText}"`
+          );
+          csvContent += cells.join(",") + "\n";
+        });
+
+        const blob = new Blob([csvContent], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "employees.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      function showStatsPopup() {
+        const popup = document.getElementById("statsPopup");
+        popup.classList.remove("hidden");
+
+        fetch(
+          "https://script.google.com/macros/s/AKfycbwW05ThHhLzFFqq3mZ-hvayRoHlGA7ESpd0ysT1lVPY3nukqr6S5f1WdyHWobGF3c5p/exec"
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            const total = data.length;
+            const married = data.filter(
+              (emp) => emp["status"] === "متزوج"
+            ).length;
+            const salaries = data
+              .map((emp) => parseFloat(emp["salary"]))
+              .filter((s) => !isNaN(s));
+            const avgSalary = (
+              salaries.reduce((a, b) => a + b, 0) / salaries.length
+            ).toFixed(2);
+
+            document.getElementById("totalCount").textContent = total;
+            document.getElementById("marriedCount").textContent = married;
+            document.getElementById("avgSalary").textContent = avgSalary;
+
+            // رسم بياني
+            const ctx = document.getElementById("statsChart").getContext("2d");
+            if (window.statsChartInstance) window.statsChartInstance.destroy(); // مسح القديم
+            window.statsChartInstance = new Chart(ctx, {
+              type: "pie",
+              data: {
+                labels: ["متزوج", "أعزب"],
+                datasets: [
+                  {
+                    data: [married, total - married],
+                    backgroundColor: ["#6366F1", "#E5E7EB"],
+                  },
+                ],
+              },
+              options: {
+                plugins: { legend: { position: "bottom" } },
+              },
+            });
+          });
+      }
+
+      function hideStatsPopup() {
+        document.getElementById("statsPopup").classList.add("hidden");
+      }
+
+      function downloadStatsPDF() {
+        const statsElement = document.getElementById("statsContent");
+
+        html2canvas(statsElement).then((canvas) => {
+          const imgData = canvas.toDataURL("image/png");
+          const pdf = new jspdf.jsPDF();
+          pdf.addImage(imgData, "PNG", 15, 15, 180, 160);
+          pdf.save("employee-stats.pdf");
+        });
+      }
+
+      function showHousingStats() {
+        const popup = document.getElementById("housingStatsPopup");
+        popup.classList.remove("hidden");
+
+        fetch(
+          "https://script.google.com/macros/s/AKfycbxoeOxRbxrbvYiqS_gtvYJuPMDasV3rbFyg-GyZhR5Scdj30OGhU6wq1jDtfMnWV9G7ig/exec"
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            // نسبة حسب المكتب
+            const officeCount = {};
+            const hondaCount = {};
+            const usageTimes = {};
+
+            data.forEach((row) => {
+              const office = row["Office"]?.trim();
+              const honda = row["PG S.N."]?.trim();
+              const type = row["نوع التسكين"]?.trim();
+              const dateTimeStr = row["Date"] + "T" + (row["Time "] || "00:00");
+
+              // إحصاء المكاتب
+              if (office) officeCount[office] = (officeCount[office] || 0) + 1;
+
+              // إحصاء الهوندا
+              if (honda) hondaCount[honda] = (hondaCount[honda] || 0) + 1;
+
+              // ساعات تشغيل الهوندا (بين بداية ونهاية)
+              if (honda && type) {
+                if (!usageTimes[honda]) usageTimes[honda] = [];
+                usageTimes[honda].push({ type, time: new Date(dateTimeStr) });
+              }
+            });
+
+            const totalOffices = Object.values(officeCount).reduce(
+              (a, b) => a + b,
+              0
+            );
+            const totalHondas = Object.values(hondaCount).reduce(
+              (a, b) => a + b,
+              0
+            );
+
+            const officeLabels = Object.keys(officeCount);
+            const officeData = officeLabels.map((key) =>
+              ((officeCount[key] / totalOffices) * 100).toFixed(1)
+            );
+
+            const hondaLabels = Object.keys(hondaCount);
+            const hondaData = hondaLabels.map((key) =>
+              ((hondaCount[key] / totalHondas) * 100).toFixed(1)
+            );
+
+            const officeCtx = document
+              .getElementById("officeChart")
+              .getContext("2d");
+            const hondaCtx = document
+              .getElementById("hondaChart")
+              .getContext("2d");
+
+            if (window.officeChartInstance)
+              window.officeChartInstance.destroy();
+            if (window.hondaChartInstance) window.hondaChartInstance.destroy();
+
+            window.officeChartInstance = new Chart(officeCtx, {
+              type: "bar",
+              data: {
+                labels: officeLabels,
+                datasets: [
+                  {
+                    label: "نسبة التسكين حسب المكتب",
+                    data: officeData,
+                    backgroundColor: "#4F46E5",
+                  },
+                ],
+              },
+              options: { indexAxis: "y", responsive: true },
+            });
+
+            window.hondaChartInstance = new Chart(hondaCtx, {
+              type: "bar",
+              data: {
+                labels: hondaLabels,
+                datasets: [
+                  {
+                    label: "نسبة استخدام الهوندا",
+                    data: hondaData,
+                    backgroundColor: "#10B981",
+                  },
+                ],
+              },
+              options: { indexAxis: "y", responsive: true },
+            });
+
+            // حساب ساعات تشغيل الهوندا
+            let totalHours = 0;
+            for (const honda in usageTimes) {
+              const events = usageTimes[honda].sort((a, b) => a.time - b.time);
+              for (let i = 0; i < events.length - 1; i++) {
+                if (
+                  events[i].type === "بداية" &&
+                  events[i + 1].type === "نهاية"
+                ) {
+                  const diff =
+                    (events[i + 1].time - events[i].time) / 1000 / 3600;
+                  if (diff > 0 && diff < 24) totalHours += diff;
+                }
+              }
+            }
+            document.getElementById("totalHondaHours").textContent =
+              totalHours.toFixed(1);
+          });
+      }
+
+      function hideHousingStats() {
+        document.getElementById("housingStatsPopup").classList.add("hidden");
+      }
+
+      function downloadHousingStatsPDF() {
+        const statsElement = document.getElementById("housingStatsContent");
+        html2canvas(statsElement).then((canvas) => {
+          const imgData = canvas.toDataURL("image/png");
+          const pdf = new jspdf.jsPDF();
+          pdf.addImage(imgData, "PNG", 15, 15, 180, 160);
+          pdf.save("housing-stats.pdf");
+        });
+      }
+
+      function loadHomeStats() {
+        Promise.all([
+          fetch(
+            "https://script.google.com/macros/s/AKfycbwW05ThHhLzFFqq3mZ-hvayRoHlGA7ESpd0ysT1lVPY3nukqr6S5f1WdyHWobGF3c5p/exec"
+          ).then((res) => res.json()),
+          fetch(
+            "https://script.google.com/macros/s/AKfycbxoeOxRbxrbvYiqS_gtvYJuPMDasV3rbFyg-GyZhR5Scdj30OGhU6wq1jDtfMnWV9G7ig/exec"
+          ).then((res) => res.json()),
+        ]).then(([employees, housing]) => {
+          // ✅ الكروت
+          document.getElementById("employeeCount").textContent =
+            employees.length;
+          document.getElementById("housingCount").textContent = housing.length;
+          document.getElementById("lastUpdate").textContent =
+            new Date().toLocaleString("ar-EG");
+
+          const targetOffices = ["شبرا", "جسر السويس", "المهندسين"];
+          const officeList = document.getElementById("officeList");
+
+          officeList.innerHTML = targetOffices
+            .map((office) => {
+              const count = employees.filter(
+                (emp) => emp["office"] === office
+              ).length;
+              return `<li>• ${office}: ${count} موظف</li>`;
+            })
+            .join("");
+
+          // ✅ الرسم البياني للهوندا
+          const hondaCount = {};
+          housing.forEach((row) => {
+            const honda = row["PG S.N."]?.trim();
+            if (honda) hondaCount[honda] = (hondaCount[honda] || 0) + 1;
+          });
+          const hondaLabels = Object.keys(hondaCount);
+          const hondaData = Object.values(hondaCount);
+
+          new Chart(document.getElementById("homeHondaChart"), {
+            type: "bar",
+            data: {
+              labels: hondaLabels,
+              datasets: [
+                {
+                  label: "عدد مرات الاستخدام",
+                  data: hondaData,
+                  backgroundColor: "#14b8a6",
+                },
+              ],
+            },
+            options: { responsive: true, indexAxis: "y" },
+          });
+
+          // ✅ الرسم البياني للمكاتب
+          const officeCount = {};
+          housing.forEach((row) => {
+            const office = row["Office"]?.trim();
+            if (office) officeCount[office] = (officeCount[office] || 0) + 1;
+          });
+          const officeLabels = Object.keys(officeCount);
+          const officeData = Object.values(officeCount);
+
+          new Chart(document.getElementById("homeOfficeChart"), {
+            type: "pie",
+            data: {
+              labels: officeLabels,
+              datasets: [
+                {
+                  data: officeData,
+                  backgroundColor: officeLabels.map(
+                    () => `hsl(${Math.random() * 360}, 70%, 70%)`
+                  ),
+                },
+              ],
+            },
+          });
+
+          // ✅ الرسم البياني للوظائف
+          const jobCount = {};
+          employees.forEach((emp) => {
+            const job = emp["jobTitle"]?.trim();
+            if (job) jobCount[job] = (jobCount[job] || 0) + 1;
+          });
+          const jobLabels = Object.keys(jobCount);
+          const jobData = Object.values(jobCount);
+
+          new Chart(document.getElementById("homeJobChart"), {
+            type: "bar",
+            data: {
+              labels: jobLabels,
+              datasets: [
+                {
+                  label: "عدد الموظفين",
+                  data: jobData,
+                  backgroundColor: "#6366f1",
+                },
+              ],
+            },
+            options: { responsive: true },
+          });
+        });
       }
     </script>
   </body>
