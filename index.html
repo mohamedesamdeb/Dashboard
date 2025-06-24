@@ -106,6 +106,11 @@
           <i data-lucide="users" class="w-7 h-7 text-teal-400"></i>
           <span class="link-text hidden">عرض الموظفين</span>
         </button>
+        <button onclick="loadContent('pgRoster')"
+          class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-pink-800 transition text-right">
+          <i data-lucide="calendar-days" class="w-7 h-7 text-pink-300"></i>
+          <span class="link-text hidden">PG Roster</span>
+        </button>
       </div>
     </aside>
     <!-- مساحة المحتوى -->
@@ -453,6 +458,48 @@
   `;
         lucide.createIcons();
         fetchEmployeeData();
+      } else if (section === "pgRoster") {
+        const main = document.getElementById("mainContent");
+        const today = new Date();
+        const dateStr = today.toISOString().split("T")[0];
+        const weekdayName = today.toLocaleDateString("ar-EG", {
+          weekday: "long",
+        });
+
+        main.innerHTML = `
+    <h2 class="text-2xl font-bold text-pink-700 mb-6 text-center">📋 PG Roster</h2>
+    <div class="flex flex-col md:flex-row justify-center items-center gap-6">
+      <button onclick="showPgRosterCar()" class="bg-blue-600 text-white p-6 rounded-xl shadow hover:bg-blue-700 text-center w-60">
+        <div class="text-lg font-bold mb-2">🚗 PG Roster Car</div>
+        <div class="text-sm text-white/80">${dateStr}</div>
+      </button>
+      
+    </div>
+    <div id="pgRosterWrapper" class="mt-10 relative hidden">
+  <!-- أزرار النسخ والإغلاق -->
+  <div class="absolute top-2 left-2 flex gap-2 z-10">
+    <button onclick="copyPgRosterText()"
+      class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded flex items-center gap-1 shadow">
+      <i data-lucide="copy" class="w-4 h-4"></i> نسخ
+    </button>
+    <button onclick="hidePgRosterOutput()"
+      class="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1 rounded flex items-center gap-1 shadow">
+      <i data-lucide="x" class="w-4 h-4"></i> إغلاق
+    </button>
+  </div>
+
+  <!-- محتوى النص -->
+  <div id="pgRosterOutput"
+    class="whitespace-pre-wrap font-mono text-sm bg-gray-100 p-4 pt-14 rounded-xl shadow text-gray-800">
+    <!-- بيتم ملؤه ديناميكيًا -->
+  </div>
+</div>
+
+</div>
+
+
+  `;
+        lucide.createIcons();
       }
     }
     function filterBySiteID() {
@@ -657,9 +704,9 @@
       // جدول التسكين
       const housingRows = document.querySelectorAll("#housingTableBody tr");
       housingRows.forEach((row) => {
-        const name = row.querySelector("td:nth-child(3)")?.textContent || "";
+        const name = row.querySelector("td:nth-child(1)")?.textContent || "";
         const siteID =
-          row.querySelector("td:nth-child(6)")?.textContent || "";
+          row.querySelector("td:nth-child(5)")?.textContent || "";
         const date = row.querySelector("td:nth-child(7)")?.textContent || "";
         let show = true;
         if (searchName && !name.includes(searchName)) show = false;
@@ -778,7 +825,7 @@
       const rows = document.querySelectorAll("#employeeTableBody tr");
 
       rows.forEach((row) => {
-        const nameCell = row.querySelector("td:first-child");
+        const nameCell = row.querySelector("td:nth-child(2)");
         const nameText = nameCell?.textContent.toLowerCase() || "";
         row.style.display = nameText.includes(input) ? "" : "none";
       });
@@ -1157,6 +1204,57 @@
             return `<li>• ${office}: ${count} موظف</li>`;
           })
           .join("");
+        // 🔍 تحليل أكثر السيتات تسكينًا حسب المكتب
+        const siteOfficeCount = {};
+        housing.forEach((row) => {
+          const site = row["Site ID"]?.trim();
+          const office = row["Office"]?.trim();
+          const typeRaw = row["نوع التسكين"]?.trim();
+          const type = typeRaw?.includes("بداية")
+            ? "بداية"
+            : typeRaw?.includes("نهاية")
+              ? "نهاية"
+              : "";
+
+          if (site && office && type === "بداية") {
+            const key = `${site}__${office}`;
+            siteOfficeCount[key] = (siteOfficeCount[key] || 0) + 1;
+          }
+        });
+
+        const sortedSites = Object.entries(siteOfficeCount)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+
+        const siteTable = `
+  <h3 class="font-bold text-gray-700 mb-2">🏗️ أكثر السيتات تسكينًا</h3>
+  <table class="w-full text-sm border border-gray-300 rounded overflow-hidden">
+    <thead class="bg-gray-100 text-gray-700">
+      <tr>
+        <th class="px-3 py-2 border">Site</th>
+        <th class="px-3 py-2 border">المكتب</th>
+        <th class="px-3 py-2 border">عدد التسكينات</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${sortedSites
+            .map(([key, count]) => {
+              const [site, office] = key.split("__");
+              return `<tr>
+            <td class="px-3 py-2 border">${site}</td>
+            <td class="px-3 py-2 border">${office}</td>
+            <td class="px-3 py-2 border">${count}</td>
+          </tr>`;
+            })
+            .join("")}
+    </tbody>
+  </table>
+`;
+
+        const container = document.createElement("div");
+        container.className = "bg-white p-4 rounded-xl shadow border mt-6";
+        container.innerHTML = siteTable;
+        document.querySelector("main #mainContent")?.appendChild(container);
       });
     }
 
@@ -1211,6 +1309,97 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+
+    function showPgRosterCar() {
+      const today = new Date();
+      const day = today.getDay(); // 0 = الأحد
+      const dateStr = today.toISOString().split("T")[0];
+      const weekdays = [
+        "الأحد",
+        "الاثنين",
+        "الثلاثاء",
+        "الأربعاء",
+        "الخميس",
+        "الجمعة",
+        "السبت",
+      ];
+      const todayName = weekdays[day];
+
+      const drivers = [
+        { name: "عبد المقصود", off: 1, office: "جسر السويس" },
+        { name: "محمد حسين", off: 3, office: "جسر السويس" },
+        { name: "محمد بيان", off: 6, office: "جسر السويس" },
+        { name: "ابراهيم حسني", off: 4, office: "شبرا" },
+        { name: "محمد عبده", off: 5, office: "شبرا" },
+        { name: "احمد عزت", off: 3, office: "شبرا" },
+        { name: "احمد على", off: 2, office: "شبرا" },
+        { name: "هانى ريان", off: 1, office: "شبرا" },
+        { name: "ايمن جمال", off: 6, office: "المهندسين" },
+        { name: "سيد جاد", off: 0, office: "المهندسين" },
+      ];
+
+      const activeDrivers = drivers.filter((d) => d.off !== day);
+
+      const offices = {
+        المهندسين: [],
+        شبرا: [],
+        "جسر السويس": [],
+      };
+
+      activeDrivers.forEach((d) => {
+        if (offices[d.office]) {
+          offices[d.office].push(d.name);
+        }
+      });
+
+      const renderSection = (office, names) => `
+${office}
+
+◻شفت الصبح◻
+
+${names.join("\n")}
+
+◼ شفت الليل ◼
+
+${names.join("\n")}
+ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ`;
+
+      const fullText = `
+PG Cars Roster
+
+◻ شغل ${todayName} - ${dateStr}
+
+${renderSection("مكتب المهندسين", offices["المهندسين"])}
+${renderSection("مكتب شبرا", offices["شبرا"])}
+${renderSection("مكتب الجسر", offices["جسر السويس"])}
+
+🔻🔺🔻🔺🔻🔺🔻🔺🔻🔺
+`;
+
+      const output = document.getElementById("pgRosterOutput");
+      document.getElementById("pgRosterWrapper").classList.remove("hidden");
+      document.getElementById("pgRosterOutput").innerText = fullText;
+      lucide.createIcons(); // علشان تظهر الأيقونات بعد إدخالها ديناميكيًا
+    }
+
+    function copyPgRosterText() {
+      const text = document.getElementById("pgRosterOutput")?.innerText || "";
+      if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+          Swal.fire({
+            icon: "success",
+            title: "تم النسخ",
+            text: "تم نسخ قائمة السائقين!",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        });
+      }
+    }
+
+    function hidePgRosterOutput() {
+      document.getElementById("pgRosterWrapper").classList.add("hidden");
     }
   </script>
 </body>
