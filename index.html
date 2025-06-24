@@ -63,6 +63,15 @@
         transform: scale(1);
       }
     }
+
+    .scrollbar-hide {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+    }
   </style>
 </head>
 
@@ -70,12 +79,13 @@
   <div class="flex h-screen">
     <!-- الشريط الجانبي -->
     <aside
-      class="sidebar bg-gradient-to-b from-gray-900 to-gray-800 text-white w-16 hover:w-56 transition-all duration-300 overflow-hidden shadow-lg">
+      class="sidebar bg-gradient-to-b from-gray-900 to-gray-800 text-white w-16 hover:w-56 transition-all duration-300 overflow-y-auto max-h-screen scrollbar-hide shadow-lg">
       <div class="flex flex-col h-full p-2 space-y-6 pt-6">
         <div class="flex items-center space-x-2 px-4 mb-4">
           <i data-lucide="layout-dashboard" class="w-6 h-6 text-blue-400"></i>
           <span class="link-text hidden font-semibold text-lg">لوحة التحكم</span>
         </div>
+
         <button onclick="loadContent('home')"
           class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-gray-800 transition text-right">
           <i data-lucide="home" class="w-7 h-7 text-yellow-400"></i>
@@ -110,6 +120,11 @@
           class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-pink-800 transition text-right">
           <i data-lucide="calendar-days" class="w-7 h-7 text-pink-300"></i>
           <span class="link-text hidden">PG Roster</span>
+        </button>
+        <button onclick="loadContent('store')"
+          class="flex items-center space-x-2 px-4 py-3 rounded hover:bg-lime-800 transition text-right">
+          <i data-lucide="package-plus" class="w-7 h-7 text-lime-400"></i>
+          <span class="link-text hidden">إضافة للمخزن</span>
         </button>
       </div>
     </aside>
@@ -498,6 +513,42 @@
 </div>
 
 
+  `;
+        lucide.createIcons();
+      } else if (section === "store") {
+        main.innerHTML = `
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow space-y-6 animate-fade-in">
+      <h2 class="text-2xl font-bold text-lime-700 flex items-center gap-2 border-b pb-2">
+        <i data-lucide="package-plus" class="w-6 h-6 text-lime-500"></i>
+        إضافة منتج للمخزن
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-sm text-gray-600 mb-1 block">📅 التاريخ</label>
+          <input type="date" id="storeDate" class="input-style" required />
+        </div>
+        <div>
+          <label class="text-sm text-gray-600 mb-1 block">🏢 المكتب</label>
+          <input type="text" id="storeOffice" class="input-style" placeholder="مثال: جسر السويس" required />
+        </div>
+        <div>
+          <label class="text-sm text-gray-600 mb-1 block">⛽ الكمية المتوفرة (لتر)</label>
+          <input type="number" id="storeQty" class="input-style" placeholder="أدخل الكمية باللتر" required />
+        </div>
+        <div>
+          <label class="text-sm text-gray-600 mb-1 block">🔢 الرقم التسلسلي</label>
+          <input type="text" id="storeSerial" class="input-style" placeholder="أدخل Serial Number" required />
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="submitStoreForm(event)"
+          class="bg-lime-600 hover:bg-lime-700 text-white px-6 py-3 rounded-lg shadow transition">
+          ➕ إضافة البيانات
+        </button>
+      </div>
+    </div>
   `;
         lucide.createIcons();
       }
@@ -1400,6 +1451,49 @@ ${renderSection("مكتب الجسر", offices["جسر السويس"])}
 
     function hidePgRosterOutput() {
       document.getElementById("pgRosterWrapper").classList.add("hidden");
+    }
+
+    function submitStoreForm(event) {
+      event.preventDefault();
+      const date = document.getElementById("storeDate").value;
+      const office = document.getElementById("storeOffice").value.trim();
+      const qty = document.getElementById("storeQty").value.trim();
+      const serial = document.getElementById("storeSerial").value.trim();
+
+      const payload = {
+        date,
+        office,
+        qty,
+        serial,
+      };
+
+      fetch("https://script.google.com/macros/s/YOUR_SCRIPT_URL_HERE/exec", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          Swal.fire({
+            icon: "success",
+            title: "✅ تم الإرسال",
+            text: "تم إضافة بيانات المنتج بنجاح",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          document.getElementById("storeDate").value = "";
+          document.getElementById("storeOffice").value = "";
+          document.getElementById("storeQty").value = "";
+          document.getElementById("storeSerial").value = "";
+        })
+        .catch((err) => {
+          Swal.fire({
+            icon: "error",
+            title: "❌ خطأ",
+            text: "حدث خطأ أثناء إرسال البيانات",
+          });
+          console.error(err);
+        });
     }
   </script>
 </body>
