@@ -583,9 +583,18 @@
   <h2 class="text-2xl font-bold text-lime-700 mb-6">📦 المخزن</h2>
 
   <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-    <button onclick="openStorePopup()" class="bg-lime-700 hover:bg-lime-800 text-white px-6 py-2 rounded shadow">
-      ➕ إضافة / صرف جديد
-    </button>
+   <div class="flex flex-wrap justify-end gap-2 mb-4">
+  <button onclick="openStorePopup()" class="bg-lime-700 hover:bg-lime-800 text-white px-6 py-2 rounded shadow text-sm">
+    ➕ إضافة / صرف جديد
+  </button>
+
+  <button onclick="exportAllStoreData()" class="bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded shadow text-sm">
+  📦 تصدير كل البيانات
+</button>
+
+</div>
+
+    
 
     <div class="flex flex-wrap gap-4 text-sm">
       <span class="bg-white border px-4 py-2 rounded shadow">🏢 شبرا: <strong id="balanceShubra">--</strong> لتر</span>
@@ -613,6 +622,7 @@
     </select>
   </div>
 </div>
+
 
 
   <div id="storeTableWrapper" class="overflow-x-auto bg-white border rounded shadow">
@@ -803,9 +813,9 @@
           <td class="px-4 py-2 border">${item.category || ""}</td>
           <td class="px-4 py-2 border">${item.office || ""}</td>
           <td class="px-4 py-2 border">${item.site || ""}</td>
-          <td class="px-4 py-2 border">${formatDateOnly(item.dateIn)}</td>
+          <td class="px-4 py-2 border">${formatDateForCSV(item.dateIn)}</td>
           <td class="px-4 py-2 border">${extractTimeOnly(item.timeIn)}</td>
-          <td class="px-4 py-2 border">${formatDateOnly(item.dateOut)}</td>
+          <td class="px-4 py-2 border">${formatDateForCSV(item.dateOut)}</td>
           <td class="px-4 py-2 border">${extractTimeOnly(item.timeOut)}</td>
           <td class="px-4 py-2 border">${item.tt || ""}</td>
           <td class="px-4 py-2 border">${item.fuel || ""}</td>
@@ -937,7 +947,7 @@
             const tr = document.createElement("tr");
             tr.className = "hover:bg-gray-100 transition";
             tr.innerHTML = `
-          <td class="px-4 py-2 border">${formatDateOnly(emp.hireDate)}</td>
+          <td class="px-4 py-2 border">${formatDateForCSV(emp.hireDate)}</td>
           <td class="px-4 py-2 border">${emp.name || ""}</td>
           <td class="px-4 py-2 border">${emp.nationalId || ""}</td>
           <td class="px-4 py-2 border">${emp.address || ""}</td>
@@ -1214,6 +1224,17 @@
           const withdrawal = parseFloat(row["الصرف"] || 0);
           if (balances.hasOwnProperty(office)) {
             balances[office] += addition - withdrawal;
+          }
+          const totalBalance =
+            balances["شبرا"] + balances["المهندسين"] + balances["جسر السويس"];
+
+          if (totalBalance < 7) {
+            Swal.fire({
+              icon: "warning",
+              title: "⚠️ تنبيه هام",
+              text: "إجمالي رصيد المخزن أقل من 7 لتر. يرجى إعادة التعبئة.",
+              confirmButtonText: "فهمت",
+            });
           }
         });
 
@@ -1749,7 +1770,15 @@ ${renderSection("مكتب الجسر", offices["جسر السويس"])}
         }
 
         const tr = document.createElement("tr");
-        tr.className = "hover:bg-gray-50";
+
+        if (row["نوع العملية"] === "إضافة") {
+          tr.className = "bg-green-50 hover:bg-green-100";
+        } else if (row["نوع العملية"] === "صرف") {
+          tr.className = "bg-red-50 hover:bg-red-100";
+        } else {
+          tr.className = "hover:bg-gray-50";
+        }
+
         tr.innerHTML = `
       <td class="px-4 py-2 border">${formatDateOnlyEgypt(row["التاريخ"])}</td>
       <td class="px-4 py-2 border">${row["اسم الفني"]}</td>
@@ -1769,6 +1798,74 @@ ${renderSection("مكتب الجسر", offices["جسر السويس"])}
         balances["المهندسين"];
       document.getElementById("balanceGesr").textContent =
         balances["جسر السويس"];
+
+      // 🔻 هنا تبدأ كود التنبيه
+      const totalBalance =
+        balances["شبرا"] + balances["المهندسين"] + balances["جسر السويس"];
+
+      if (totalBalance < 7) {
+        Swal.fire({
+          icon: "warning",
+          title: "⚠️ تنبيه هام",
+          text: "إجمالي رصيد المخزن أقل من 7 لتر. يرجى إعادة التعبئة.",
+          confirmButtonText: "فهمت",
+        });
+      }
+    }
+    function exportAllStoreData() {
+      if (!storeDataCache.length) {
+        Swal.fire("⚠️ لا توجد بيانات حالياً للتصدير.");
+        return;
+      }
+
+      const headers = [
+        "التاريخ",
+        "اسم الفني",
+        "المكتب",
+        "الكمية",
+        "نوع العملية",
+        "الرقم التسلسلي",
+        "الإضافة",
+        "الصرف",
+      ];
+
+      const rows = storeDataCache.map((row) => [
+        formatDateForCSV(row["التاريخ"]),
+        row["اسم الفني"],
+        row["المكتب"],
+        row["الكمية"],
+        row["نوع العملية"],
+        row["الرقم التسلسلي"],
+        row["الإضافة"] || "",
+        row["الصرف"] || "",
+      ]);
+
+      let csvContent = "\uFEFF" + headers.join(",") + "\n"; // BOM لدعم العربي
+
+      rows.forEach((row) => {
+        csvContent += row.join(",") + "\n";
+      });
+
+      const blob = new Blob([csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "جميع_بيانات_المخزن.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function formatDateForCSV(isoDateString) {
+      const date = new Date(isoDateString);
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "Africa/Cairo",
+      }); // النتيجة: 27/06/2025
     }
   </script>
 </body>
